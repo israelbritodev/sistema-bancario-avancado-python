@@ -1,7 +1,6 @@
 # 🏦 Banco DevBrito.py - Sistema Bancário Modular
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Em%Andamento-success?style=for-the-badge)
 
 > Projeto desenvolvido como parte do desafio de **Back-End com Python** da **DIO (Digital Innovation One)** em parceria com a **Luiza Labs**.
 
@@ -61,6 +60,6 @@ A função `listar_usuarios` faz um "join" manual entre os dicionários para exi
 Desenvolvido por Jovem Brito Jr.
 
 ### Links Úteis:
-LinkedIn: https://www.linkedin.com/in/israelbritojr/
-GitHub: https://github.com/israelbritodev?tab=repositories
-Instagram: https://www.instagram.com/jovembritojr/
+* LinkedIn: https://www.linkedin.com/in/israelbritojr/
+* GitHub: https://github.com/israelbritodev?tab=repositories
+* Instagram: https://www.instagram.com/jovembritojr/
