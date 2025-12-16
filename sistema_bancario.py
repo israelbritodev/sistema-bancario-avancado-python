@@ -1,8 +1,7 @@
-# Operações a fazer:
-# Separar funções existentes de saque, deposito e extrato em funções
-# Criar duas novas funções: cadastrar usuário (cliente) e cadastrar conta bancária
 
 from datetime import datetime
+from functools import wraps
+
 
 ## Função para exibir o menu de operações
 def menu():
@@ -25,21 +24,26 @@ def menu():
 
 # Decorador de log para data e hora
 def log_transacao(func):
+    @wraps(func) # Mantém as informações originais da função decorada, como nome e docstring. Para que logs avançados possam ser implementados futuramente sem falhas.
     def envelope(*args, **kwargs):
-        resultado = func(*args, **kwargs)
-        if func.__name__ in ["depositar", "sacar"]:
-            if resultado is not None:
-                print(f"Transação de {func.__name__} realizada em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        try:
+            resultado = func(*args, **kwargs)
+
+            if func.__name__ == "exibir_extrato":
+                print(f"Extrato consultado em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            elif func.__name__ == "listar_usuarios":
+                print(f"Listagem de usuários realizada em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             else:
-                print(f"Tentativa de {func.__name__} falha em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        elif func.__name__ == "exibir_extrato":
-            print(f"Extrato atualizado desde de: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        elif func.__name__ in ["cadastrar_usuario", "cadastrar_conta"]:
-            if resultado is not None:
-                print(f"Operação de {func.__name__} realizada em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            else:
-                print(f"Tentativa de {func.__name__} falha em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        return resultado
+                if resultado is False:
+                    print(f"Tentativa de {func.__name__} falhou em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                else:
+                    print(f"Operação {func.__name__} realizada em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+            return resultado
+
+        except Exception as e:
+            print(f"Erro inesperado em {func.__name__}: {e}")
+            return False
     return envelope
 
 # ---------------------------------------
@@ -51,24 +55,24 @@ def cadastrar_usuario(dic_usuarios, /):
     cpf = input("Informe o CPF (somente números): ")
     # Validando o CPF
     if not validar_cpf(cpf):
-        return
+        return False
     # Validando se o usuário já existe no dicionário de usuários
     if verificar_usuario(dic_usuarios, cpf):
         print("Já existe um usuário cadastrado com esse CPF.")
-        return
+        return False
     # Coletando os dados do usuário para cadastro
     nome = input("Informe o nome completo: ")
     # Validando o nome
     if not validar_nome(nome):
-        return
+        return False
     data_nascimento = input("Informe a data de nascimento (DD/MM/AAAA): ")
     # Validando a data de nascimento
     if not validar_data_nascimento(data_nascimento):
-        return
+        return False
     endereco = input("Informe o endereço (rua, número - bairro - cidade/sigla do estado): ")
     if endereco.strip() == "":
         print("Endereço inválido. O endereço não pode estar vazio.")
-        return
+        return False
     
     # Armazenando os dados no dicionário de usuários
     dic_usuarios[cpf] = {
@@ -79,14 +83,19 @@ def cadastrar_usuario(dic_usuarios, /):
     }
     # Mensagem de sucesso no cadastro, incluindo o nome do usuário
     print(f"\nUsuário {nome} cadastrado com sucesso! Seja bem-vindo ao Banco DevBrito.py!")
+    
+    return True
 # Cadastrar conta bancária
 @log_transacao # Decorador de log aplicado à função cadastrar_conta, para registrar a data e hora da transação
 def cadastrar_conta(dic_usuarios, dic_contas_bancarias, N_AGENCIA, /):
     cpf = input("Informe o CPF do usuário desejado: ")
 
+    if not validar_cpf(cpf):
+        return False
+    
     if not verificar_usuario(dic_usuarios, cpf):
         print("Usuário não encontrado. Cadastre o usuário antes.")
-        return
+        return False
 
     numero_conta = len(dic_contas_bancarias) + 1
 
@@ -102,8 +111,11 @@ def cadastrar_conta(dic_usuarios, dic_contas_bancarias, N_AGENCIA, /):
     print("\nConta criada com sucesso!")
     print(f"Agência: {nova_conta['agencia']}")
     print(f"Número da Conta: {nova_conta['numero_conta']}")
-    print(f"Titular: {nova_conta['titular']}")
+    print(f"Titular: {nova_conta['titular']}")   
+
+    return True
 # Listar usuários e suas contas bancárias
+@log_transacao # Decorador de log aplicado à função listar_usuarios, para registrar a data e hora da transação
 def listar_usuarios(dic_usuarios, dic_contas_bancarias, /):
     if not dic_usuarios:
         print("Nenhum usuário cadastrado.")
@@ -163,7 +175,21 @@ def validar_data_nascimento(data_nascimento):
         return False
 
     return True
-
+# Validação de valor para operações financeiras
+def validar_valor(valor):
+    if not isinstance(valor, (int, float)):
+        print("O valor deve ser numérico.")
+        return False
+    if valor <= 0:
+        print("O valor deve ser maior que zero.")
+        return False
+    if valor > 1_000_000:
+        print("O valor excede o limite permitido.")
+        return False
+    if round(valor, 2) != valor:
+        print("O valor deve ter no máximo duas casas decimais.")
+        return False
+    return valor
 # ---------------------------------------
 # Funções de Operações Bancárias
 # ---------------------------------------
@@ -176,7 +202,7 @@ def depositar(valor, saldo, extrato, /):
         print("Depósito efetuado com sucesso!")
     else:
         print("Operação falhou! O valor informado é inválido.")
-        return
+        return False
     return saldo, extrato
 # Realizar saques com os argumentos por nome valor, saldo, extrato, limite, numero_saques e LIMITE_SAQUES, por isso o asterisco no início pois tudo após dele são argumentos nomeados
 @log_transacao # Decorador de log aplicado à função sacar, para registrar a data e hora da transação
@@ -186,22 +212,19 @@ def sacar(*, p_valor, p_saldo, p_extrato, p_limite, p_numero_saques, p_LIMITE_SA
     excedeu_limite = p_valor > p_limite
     excedeu_saques = p_numero_saques >= p_LIMITE_SAQUES 
     
-    if excedeu_saldo:
-        print("Operação falhou! Você não tem saldo suficiente.")
-
-    elif excedeu_limite:
-        print("Operação falhou! O valor do saque excede o limite.")
-
-    elif excedeu_saques:
-        print("Operação falhou! Número máximo de saques excedido.")
+    if excedeu_saldo or excedeu_limite or excedeu_saques:
+        print("Operação falhou! Verifique: Saldo, limite de Saque ou número de saques diários.")
+        return False
 
     elif p_valor > 0:
         p_saldo -= p_valor
         p_extrato += f"Saque:\t\t R$ {p_valor:.2f}\n"
         p_numero_saques += 1
+        print("Saque efetuado com sucesso!")
 
     else:
         print("Operação falhou! O valor informado é inválido.")
+        return False
     return p_saldo, p_extrato, p_numero_saques
 # Exibir o extrato e o saldo atual com os argumentos por posição e por nome saldo e extrato, respectivamente. Por isso a barra e o asterisco entre eles. Apenas o saldo é obrigatório ser posicional.
 @log_transacao # Decorador de log aplicado à função exibir_extrato, para registrar a data e hora da transação
@@ -229,42 +252,56 @@ def main():
     while True:
         # Exibe o menu e solicita a opção do usuário
         opcao = menu()
-
         if opcao == "d":
-            # Pede o valor do depósito ao usuário
-            valor = float(input("Informe o valor do depósito: "))
+            # Pede o valor do depósito ao usuário e valida entrada
+            try:
+                valor = float(input("Informe o valor do saque: "))
+            except ValueError:
+                print("Entrada inválida. Digite um número.")
+                continue
+            valor = validar_valor(valor)
+            if valor is False:
+                continue
             # Chama a função depositar e atualiza os valores de saldo e extrato e valida se houve retorno
-            if returns := depositar(valor, saldo, extrato):
-                saldo, extrato = returns
+            retorno = depositar(valor, saldo, extrato)
+            if retorno is not False:
+                saldo, extrato = retorno
             else:
                 continue
-
         elif opcao == "s":
-            # Pede o valor do saque ao usuário
-            valor = float(input("Informe o valor do saque: "))
+            # Pede o valor do saque ao usuário com validação
+            try:
+                valor = float(input("Informe o valor do saque: "))
+            except ValueError:
+                print("Entrada inválida. Digite um número.")
+                continue
+            valor = validar_valor(valor)
+            if valor is False:
+                continue
             # Chama a função sacar e atualiza os valores de saldo, extrato e numero_saques
-            saldo, extrato, numero_saques = sacar(
+            retorno = sacar(
                 p_valor=valor,
                 p_saldo=saldo,
                 p_extrato=extrato,
                 p_limite=limite,
                 p_numero_saques=numero_saques,
                 p_LIMITE_SAQUES=LIMITE_SAQUES,
-            )  
-
+            )
+            if retorno is not False:
+                saldo, extrato, numero_saques = retorno
+            else:
+                continue
         elif opcao == "e":
             # Chama a função extrato para exibir o extrato e o saldo atual
             exibir_extrato(saldo, p_extrato = extrato)
-
         elif opcao == "c":
-            cadastrar_usuario(dic_usuarios)
-        
+            if not cadastrar_usuario(dic_usuarios):
+                continue
         elif opcao == "l":
             listar_usuarios(dic_usuarios, dic_contas_bancarias)
-            
         elif opcao == "a":
-            cadastrar_conta(dic_usuarios, dic_contas_bancarias, N_AGENCIA)
-
+            if not cadastrar_conta(dic_usuarios, dic_contas_bancarias, N_AGENCIA):
+                continue
         elif opcao == "q":
             break
 
