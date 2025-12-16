@@ -2,6 +2,8 @@
 # Separar funções existentes de saque, deposito e extrato em funções
 # Criar duas novas funções: cadastrar usuário (cliente) e cadastrar conta bancária
 
+from datetime import datetime
+
 ## Função para exibir o menu de operações
 def menu():
     menu = """\n
@@ -21,10 +23,30 @@ def menu():
     
     return input(menu).lower()
 
+# Decorador de log para data e hora
+def log_transacao(func):
+    def envelope(*args, **kwargs):
+        resultado = func(*args, **kwargs)
+        if func.__name__ in ["depositar", "sacar"]:
+            if resultado is not None:
+                print(f"Transação de {func.__name__} realizada em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            else:
+                print(f"Tentativa de {func.__name__} falha em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        elif func.__name__ == "exibir_extrato":
+            print(f"Extrato atualizado desde de: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        elif func.__name__ in ["cadastrar_usuario", "cadastrar_conta"]:
+            if resultado is not None:
+                print(f"Operação de {func.__name__} realizada em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            else:
+                print(f"Tentativa de {func.__name__} falha em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        return resultado
+    return envelope
+
 # ---------------------------------------
 # Funções de Cadastro de Usuário e Conta Bancária e Listagem de Usuários
 # ---------------------------------------
 # Cadastrar usuário
+@log_transacao # Decorador de log aplicado à função cadastrar_usuario, para registrar a data e hora da transação
 def cadastrar_usuario(dic_usuarios, /):
     cpf = input("Informe o CPF (somente números): ")
     # Validando o CPF
@@ -58,6 +80,7 @@ def cadastrar_usuario(dic_usuarios, /):
     # Mensagem de sucesso no cadastro, incluindo o nome do usuário
     print(f"\nUsuário {nome} cadastrado com sucesso! Seja bem-vindo ao Banco DevBrito.py!")
 # Cadastrar conta bancária
+@log_transacao # Decorador de log aplicado à função cadastrar_conta, para registrar a data e hora da transação
 def cadastrar_conta(dic_usuarios, dic_contas_bancarias, N_AGENCIA, /):
     cpf = input("Informe o CPF do usuário desejado: ")
 
@@ -145,14 +168,18 @@ def validar_data_nascimento(data_nascimento):
 # Funções de Operações Bancárias
 # ---------------------------------------
 # Realizar depósitos com os argumentos posicionais valor, saldo e extrato por isso a barra
+@log_transacao # Decorador de log aplicado à função depositar, para registrar a data e hora da transação
 def depositar(valor, saldo, extrato, /):
     if valor > 0:
         saldo += valor
         extrato += f"Depósito:\t R$ {valor:.2f}\n"
+        print("Depósito efetuado com sucesso!")
     else:
         print("Operação falhou! O valor informado é inválido.")
+        return
     return saldo, extrato
 # Realizar saques com os argumentos por nome valor, saldo, extrato, limite, numero_saques e LIMITE_SAQUES, por isso o asterisco no início pois tudo após dele são argumentos nomeados
+@log_transacao # Decorador de log aplicado à função sacar, para registrar a data e hora da transação
 def sacar(*, p_valor, p_saldo, p_extrato, p_limite, p_numero_saques, p_LIMITE_SAQUES):
     # Validações com variáveis booleanas
     excedeu_saldo = p_valor > p_saldo
@@ -177,10 +204,11 @@ def sacar(*, p_valor, p_saldo, p_extrato, p_limite, p_numero_saques, p_LIMITE_SA
         print("Operação falhou! O valor informado é inválido.")
     return p_saldo, p_extrato, p_numero_saques
 # Exibir o extrato e o saldo atual com os argumentos por posição e por nome saldo e extrato, respectivamente. Por isso a barra e o asterisco entre eles. Apenas o saldo é obrigatório ser posicional.
+@log_transacao # Decorador de log aplicado à função exibir_extrato, para registrar a data e hora da transação
 def exibir_extrato(saldo, /, *, p_extrato):
     print("\n================ EXTRATO ================")
     print("Não foram realizadas movimentações." if not p_extrato else p_extrato)
-    print(f"\nSaldo:\tR$ {saldo:.2f}")
+    print(f"\nSaldo:\t\tR$ {saldo:.2f}")
     print("==========================================")
 
 ## Função principal do sistema bancário
@@ -205,8 +233,11 @@ def main():
         if opcao == "d":
             # Pede o valor do depósito ao usuário
             valor = float(input("Informe o valor do depósito: "))
-            # Chama a função depositar e atualiza os valores de saldo e extrato
-            saldo, extrato = depositar(valor, saldo, extrato)
+            # Chama a função depositar e atualiza os valores de saldo e extrato e valida se houve retorno
+            if returns := depositar(valor, saldo, extrato):
+                saldo, extrato = returns
+            else:
+                continue
 
         elif opcao == "s":
             # Pede o valor do saque ao usuário
